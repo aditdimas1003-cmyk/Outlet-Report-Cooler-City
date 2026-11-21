@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1d4ed8">
+  <title>OutletReport Pro - Sistem Laporan & Stok</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    @media print { .no-print { display: none !important; } }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type="number"] {
+      -moz-appearance: textfield;
+    }
+    .table-form th, .table-form td { border: 1px solid #374151; padding: 4px 5px; font-size: 12px; }
+    .table-form th { background-color: #9ca3af; color: #111827; font-weight: bold; text-align: center; }
+    .unit-select {
+      font-size: 10px;
+      color: #374151;
+      background-color: transparent;
+      border-bottom: 1px dashed #9ca3af;
+      outline: none;
+      cursor: pointer;
+      padding: 1px 0;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans">
+
+  <!-- Toast Notifikasi -->
+  <div id="toast" class="hidden fixed bottom-5 right-5 z-[100] bg-gray-900 text-white text-xs font-semibold px-4 py-2.5 rounded-lg shadow-lg"></div>
+
+  <!-- ================= HALAMAN LOGIN ================= -->
+  <div id="login-screen" class="min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white p-7 sm:p-8 rounded-2xl shadow-xl max-w-md w-full border border-gray-200">
+      <div class="text-center mb-6">
+        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 text-blue-700 font-bold text-xl mb-2">OR</div>
+        <h1 class="text-2xl font-bold text-gray-800">OutletReport Pro</h1>
+        <p class="text-sm text-gray-500 mt-1">Sistem Laporan Stok, Produksi & Penjualan</p>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Username</label>
+          <input type="text" id="username" autocomplete="off" placeholder="Ketik admin atau kasir1" class="mt-1 w-full px-3.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Password</label>
+          <div class="relative mt-1">
+            <input type="text" id="password" autocomplete="off" placeholder="Ketik password" class="w-full px-3.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none pr-16">
+            <button type="button" onclick="isiCepatAdmin()" class="absolute right-2 top-2 text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold px-2 py-1 rounded-lg cursor-pointer">
+              Isi Admin
+            </button>
+          </div>
+        </div>
+
+        <div id="login-error" class="hidden bg-red-50 border border-red-200 text-red-600 text-xs p-3 rounded-xl">
+          Username atau Password tidak sesuai. Silakan cek kembali.
+        </div>
+
+        <button type="button" onclick="prosesMasuk()" class="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold py-3 rounded-xl shadow transition cursor-pointer">
+          Masuk ke Aplikasi
+        </button>
+      </div>
+
+      <div class="mt-6 p-3.5 bg-gray-50 rounded-xl border text-xs text-gray-600 space-y-1">
+        <p class="font-bold text-gray-700">Informasi Akun:</p>
+        <p>• <b>Admin (Edit Data & Akun):</b> <code class="bg-gray-200 px-1.5 py-0.5 rounded">admin</code> / <code class="bg-gray-200 px-1.5 py-0.5 rounded">123456</code></p>
+        <p>• <b>Kasir (Input Laporan):</b> <code class="bg-gray-200 px-1.5 py-0.5 rounded">kasir1</code> / <code class="bg-gray-200 px-1.5 py-0.5 rounded">123</code></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= HALAMAN UTAMA APLIKASI ================= -->
+  <div id="app-screen" class="hidden min-h-screen pb-14">
+    <!-- Navbar -->
+    <nav class="bg-blue-700 text-white px-4 py-3 shadow-md flex flex-wrap justify-between items-center gap-2 sticky top-0 z-40 no-print">
+      <div class="flex items-center gap-2">
+        <span class="font-bold text-lg tracking-tight">OutletReport Pro</span>
+        <span id="user-badge" class="text-xs bg-blue-900/80 border border-blue-500/40 px-2.5 py-1 rounded-full font-medium"></span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" id="btn-admin-panel" onclick="toggleAdminModal(true)" class="hidden bg-amber-400 hover:bg-amber-500 text-gray-950 text-xs px-3 py-1.5 rounded-lg font-bold shadow-sm cursor-pointer">
+          ⚙️ Edit Data & Akun
+        </button>
+        <button type="button" onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-1.5 rounded-lg font-semibold cursor-pointer">
+          Keluar
+        </button>
+      </div>
+    </nav>
+
+    <!-- Navigasi Tab & Export -->
+    <div class="max-w-6xl mx-auto px-4 mt-4 no-print">
+      <div class="flex space-x-2 overflow-x-auto pb-2">
+        <button type="button" onclick="switchTab('tab-stok')" id="btn-tab-stok" class="tab-btn bg-blue-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap shadow-sm cursor-pointer">1. Stok Bahan & Plastik</button>
+        <button type="button" onclick="switchTab('tab-produksi')" id="btn-tab-produksi" class="tab-btn bg-white text-gray-700 hover:bg-gray-50 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap shadow-sm cursor-pointer">2. Produksi & Sisa Bahan</button>
+        <button type="button" onclick="switchTab('tab-penjualan')" id="btn-tab-penjualan" class="tab-btn bg-white text-gray-700 hover:bg-gray-50 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap shadow-sm cursor-pointer">3. Form Penjualan Harian</button>
+      </div>
+
+      <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-200 mt-2 flex flex-wrap gap-2 items-center justify-between">
+        <div class="text-xs text-gray-600">
+          <span class="font-semibold text-gray-800">Export Laporan:</span> Hasil penuh tanpa terpotong dengan info header & satuan jelas.
+        </div>
+        <div class="flex gap-2">
+          <button type="button" id="btn-export-img" onclick="exportToImage()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2 rounded-lg font-semibold shadow-sm cursor-pointer">
+            📷 Simpan Gambar (PNG)
+          </button>
+          <button type="button" id="btn-export-pdf" onclick="exportToPDF()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs px-3.5 py-2 rounded-lg font-semibold shadow-sm cursor-pointer">
+            📄 Simpan PDF
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- AREA FORMULIR -->
+    <div id="export-area" class="max-w-6xl mx-auto bg-white p-4 sm:p-6 mt-4 shadow-md rounded-xl border border-gray-200">
+      <!-- TAB 1: STOK BAHAN -->
+      <div id="tab-stok" class="tab-content">
+        <div class="mb-4 border-2 border-gray-800 bg-gray-100 p-3.5 rounded-lg">
+          <div class="text-sm font-extrabold uppercase tracking-wide text-gray-900 mb-2.5 pb-1.5 border-b border-gray-400">
+            FORM STOK BAHAN & PLASTIC
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <div class="bg-white border border-gray-500 rounded px-3 py-2 flex items-center justify-between gap-2">
+              <span class="font-bold text-gray-800 whitespace-nowrap">TANGGAL :</span>
+              <input type="date" id="stok-tanggal" autocomplete="off" class="header-input font-semibold text-gray-900 outline-none bg-transparent text-right">
+            </div>
+            <div class="bg-white border border-gray-500 rounded px-3 py-2 flex items-center justify-between gap-2">
+              <span class="font-bold text-gray-800 whitespace-nowrap">NAMA YANG MENGHITUNG BAHAN :</span>
+              <input type="text" id="stok-penghitung" autocomplete="off" placeholder="Isi nama petugas..." class="header-input font-semibold text-gray-900 outline-none bg-transparent w-full text-right">
+            </div>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto export-scroll">
+          <table class="w-full border-collapse table-form">
+            <thead>
+              <tr>
+                <th rowspan="2" class="w-8">No</th>
+                <th rowspan="2" class="min-w-[175px]">JENIS BAHAN</th>
+                <th colspan="2">STOCK AWAL (g/ml/pcs)</th>
+                <th colspan="2">STOCK MASUK KE CASHIER (g/ml/pcs)</th>
+                <th colspan="2">STOCK AKHIR (g/ml/pcs)</th>
+                <th rowspan="2" class="min-w-[100px]">Keterangan</th>
+              </tr>
+              <tr>
+                <th>BAG</th><th>PCS/SLICES</th>
+                <th>BAG</th><th>PCS/SLICES</th>
+                <th>BAG</th><th>PCS/SLICES</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-bahan"></tbody>
+            <thead>
+              <tr><th colspan="9" class="bg-gray-400 text-center py-1">PLASTIC</th></tr>
+            </thead>
+            <tbody id="tbody-plastik"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 2: PRODUKSI & SISA -->
+      <div id="tab-produksi" class="tab-content hidden">
+        <div class="mb-4 border-2 border-gray-800 bg-gray-100 p-3.5 rounded-lg">
+          <div class="text-sm font-extrabold uppercase tracking-wide text-gray-900 mb-2.5 pb-1.5 border-b border-gray-400">
+            FORM PRODUKSI & SISA BAHAN HARIAN
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <div class="bg-white border border-gray-500 rounded px-3 py-2 flex items-center justify-between gap-2">
+              <span class="font-bold text-gray-800 whitespace-nowrap">TANGGAL :</span>
+              <input type="date" id="prod-tanggal" autocomplete="off" class="header-input font-semibold text-gray-900 outline-none bg-transparent text-right">
+            </div>
+            <div class="bg-white border border-gray-500 rounded px-3 py-2 flex items-center justify-between gap-2">
+              <span class="font-bold text-gray-800 whitespace-nowrap">NAMA YANG MEMBUAT :</span>
+              <input type="text" id="prod-pembuat" autocomplete="off" placeholder="Isi nama pembuat..." class="header-input font-semibold text-gray-900 outline-none bg-transparent w-full text-right">
+            </div>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto export-scroll">
+          <table class="w-full border-collapse table-form">
+            <thead>
+              <tr>
+                <th class="w-8">No</th>
+                <th class="min-w-[155px]">Bahan</th>
+                <th class="min-w-[125px]">BAHAN SISA SEMALAM</th>
+                <th>NAMA YANG MEMBUAT</th>
+                <th>TANGGAL BUAT</th>
+                <th class="min-w-[125px]">BAHAN BUAT BARU</th>
+                <th class="min-w-[125px]">SISA BAHAN TOKO TUTUP</th>
+                <th class="min-w-[125px]">BAHAN YANG DI BUANG (BASI)</th>
+                <th>KETERANGAN</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-produksi"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 3: FORM PENJUALAN HARIAN -->
+      <div id="tab-penjualan" class="tab-content hidden">
+        <div class="mb-4 border-2 border-gray-800 bg-gray-100 p-3.5 rounded-lg max-w-2xl mx-auto">
+          <div class="text-sm font-extrabold uppercase tracking-wide text-gray-900 mb-2.5 pb-1.5 border-b border-gray-400">
+            FORM PENJUALAN HARIAN
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-sm">
+            <div class="bg-white border border-gray-500 rounded px-3 py-2">
+              <div class="text-[11px] font-bold text-gray-600">OUTLET</div>
+              <input type="text" id="jual-outlet" autocomplete="off" placeholder="Nama outlet" class="header-input font-bold text-gray-900 outline-none bg-transparent w-full mt-0.5">
+            </div>
+            <div class="bg-white border border-gray-500 rounded px-3 py-2">
+              <div class="text-[11px] font-bold text-gray-600">KASIR</div>
+              <input type="text" id="kasir-name-field" autocomplete="off" placeholder="Nama kasir" class="header-input font-bold text-gray-900 outline-none bg-transparent w-full mt-0.5">
+            </div>
+            <div class="bg-white border border-gray-500 rounded px-3 py-2">
+              <div class="text-[11px] font-bold text-gray-600">TANGGAL</div>
+              <input type="date" id="jual-tanggal" autocomplete="off" class="header-input font-bold text-gray-900 outline-none bg-transparent w-full mt-0.5">
+            </div>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto export-scroll">
+          <table class="w-full border-collapse table-form max-w-2xl mx-auto">
+            <thead>
+              <tr><th colspan="2" class="text-sm py-2 bg-gray-400">RINCIAN PENJUALAN & KAS HARIAN</th></tr>
+            </thead>
+            <tbody id="tbody-penjualan-items"></tbody>
+            <tbody>
+              <tr><th colspan="2" class="bg-gray-300">PROMO DISKON</th></tr>
+            </tbody>
+            <tbody id="tbody-promo-items"></tbody>
+            <tbody>
+              <tr><th colspan="2" class="bg-gray-300">PENGELUARAN</th></tr>
+            </tbody>
+            <tbody id="tbody-pengeluaran"></tbody>
+            <tbody>
+              <tr class="bg-gray-200 font-bold">
+                <td>TOTAL PENGELUARAN</td>
+                <td>Rp. <span id="total-pengeluaran">0</span></td>
+              </tr>
+              <tr class="bg-gray-200 font-bold">
+                <td>TOTAL PENERIMAAN CASH</td>
+                <td>Rp. <input type="text" inputmode="numeric" id="total-penerimaan-cash" autocomplete="off" oninput="handleRibuanInput(this, hitungSisaCash)" class="num-ribuan w-36 border-b border-gray-500 bg-white outline-none text-right font-bold" placeholder="0"></td>
+              </tr>
+              <tr class="bg-blue-100 font-bold text-blue-900">
+                <td>SISA PENERIMAAN CASH</td>
+                <td>Rp. <span id="sisa-penerimaan-cash">0</span></td>
+              </tr>
+              <tr>
+                <td colspan="2" class="text-center font-bold text-[11px] bg-gray-100 py-2">
+                  HARAP BON CLOSING DAN STRUK BELANJA DI LAMPIRKAN PER HARI DAN DI STEPLAS JADI SATU
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <table class="w-full border-collapse table-form max-w-2xl mx-auto mt-[-1px]">
+            <thead id="thead-ttd-penjualan"></thead>
+            <tbody>
+              <tr class="h-14 text-center">
+                <td><input type="text" autocomplete="off" placeholder="Nama / Nominal" class="w-full text-center outline-none"></td>
+                <td><input type="text" autocomplete="off" placeholder="Nama / Nominal" class="w-full text-center outline-none"></td>
+                <td><input type="text" autocomplete="off" placeholder="Nama Terang" class="w-full text-center outline-none font-semibold"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL KHUSUS ADMIN ================= -->
+  <div id="admin-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+      <div class="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-2xl">
+        <h2 class="font-bold text-lg text-gray-800">⚙️ Pengaturan Data Master & Akun</h2>
+        <button type="button" onclick="toggleAdminModal(false)" class="text-gray-500 hover:text-gray-800 font-bold text-2xl leading-none cursor-pointer">&times;</button>
+      </div>
+
+      <div class="flex border-b bg-gray-100 px-4 pt-2 gap-2 text-xs font-semibold overflow-x-auto">
+        <button type="button" onclick="switchAdminSubTab('bahan')" id="subtab-bahan" class="admin-subtab bg-white px-3 py-2 rounded-t border-t border-x text-blue-600 cursor-pointer">Jenis Bahan</button>
+        <button type="button" onclick="switchAdminSubTab('plastik')" id="subtab-plastik" class="admin-subtab px-3 py-2 text-gray-600 cursor-pointer">Plastik</button>
+        <button type="button" onclick="switchAdminSubTab('produksi')" id="subtab-produksi" class="admin-subtab px-3 py-2 text-gray-600 cursor-pointer">Produksi</button>
+        <button type="button" onclick="switchAdminSubTab('penjualan')" id="subtab-penjualan" class="admin-subtab px-3 py-2 text-gray-600 cursor-pointer">Form Penjualan</button>
+        <button type="button" onclick="switchAdminSubTab('akun')" id="subtab-akun" class="admin-subtab px-3 py-2 text-gray-600 cursor-pointer">Akun Pengguna</button>
+      </div>
+
+      <div class="p-4 overflow-y-auto flex-1 space-y-4">
+        <!-- Editor Item Stok / Produksi -->
+        <div id="editor-items-section">
+          <div class="flex gap-2 mb-3">
+            <input type="text" id="new-item-name" placeholder="Nama item baru..." class="flex-1 border px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+            <button type="button" onclick="addMasterItem()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold cursor-pointer">+ Tambah</button>
+          </div>
+          <div id="master-items-list" class="space-y-1.5 max-h-80 overflow-y-auto pr-1"></div>
+        </div>
+
+        <!-- Editor Form Penjualan -->
+        <div id="editor-penjualan-section" class="hidden space-y-4">
+          <div class="bg-gray-50 p-3 rounded-xl border space-y-2">
+            <div class="text-xs font-bold text-gray-700 uppercase">Baris Rincian Penjualan & Kas</div>
+            <div class="flex gap-2">
+              <input type="text" id="new-jual-label" placeholder="Nama baris baru (misal: SHOPEEFOOD)..." class="flex-1 border px-3 py-1.5 rounded-lg text-sm bg-white">
+              <button type="button" onclick="addPenjualanRow('rincian')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer">+ Tambah</button>
+            </div>
+            <div id="edit-penjualan-rincian" class="space-y-1.5 max-h-48 overflow-y-auto"></div>
+          </div>
+
+          <div class="bg-gray-50 p-3 rounded-xl border space-y-2">
+            <div class="text-xs font-bold text-gray-700 uppercase">Baris Promo Diskon</div>
+            <div class="flex gap-2">
+              <input type="text" id="new-promo-label" placeholder="Nama promo baru..." class="flex-1 border px-3 py-1.5 rounded-lg text-sm bg-white">
+              <button type="button" onclick="addPenjualanRow('promo')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer">+ Tambah</button>
+            </div>
+            <div id="edit-penjualan-promo" class="space-y-1.5 max-h-36 overflow-y-auto"></div>
+          </div>
+
+          <div class="bg-gray-50 p-3 rounded-xl border flex flex-wrap items-center justify-between gap-2">
+            <span class="text-xs font-bold text-gray-700">Jumlah Baris Pengeluaran: <span id="edit-pengeluaran-count" class="text-blue-700">8</span> baris</span>
+            <div class="flex gap-2">
+              <button type="button" onclick="changePengeluaranCount(-1)" class="bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded-lg text-xs font-bold cursor-pointer">- Kurangi</button>
+              <button type="button" onclick="changePengeluaranCount(1)" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded-lg text-xs font-bold cursor-pointer">+ Tambah Baris</button>
+            </div>
+          </div>
+
+          <div class="bg-gray-50 p-3 rounded-xl border space-y-2">
+            <div class="text-xs font-bold text-gray-700 uppercase">Label Kolom Bawah (TTD / Rekap)</div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div>
+                <label class="text-[11px] text-gray-500">Kolom 1</label>
+                <input type="text" id="edit-ttd-1" onchange="updateTtdLabels()" class="w-full border px-2.5 py-1 rounded-lg text-xs bg-white font-semibold">
+              </div>
+              <div>
+                <label class="text-[11px] text-gray-500">Kolom 2</label>
+                <input type="text" id="edit-ttd-2" onchange="updateTtdLabels()" class="w-full border px-2.5 py-1 rounded-lg text-xs bg-white font-semibold">
+              </div>
+              <div>
+                <label class="text-[11px] text-gray-500">Kolom 3</label>
+                <input type="text" id="edit-ttd-3" onchange="updateTtdLabels()" class="w-full border px-2.5 py-1 rounded-lg text-xs bg-white font-semibold">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Editor Akun -->
+        <div id="editor-akun-section" class="hidden space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 bg-gray-50 p-3 rounded-xl border">
+            <input type="text" id="new-acc-user" placeholder="Username" class="border px-2.5 py-1.5 rounded-lg text-sm">
+            <input type="text" id="new-acc-pass" placeholder="Password" class="border px-2.5 py-1.5 rounded-lg text-sm">
+            <select id="new-acc-role" class="border px-2.5 py-1.5 rounded-lg text-sm bg-white">
+              <option value="kasir">Kasir (Input Saja)</option>
+              <option value="admin">Admin (Bisa Edit)</option>
+            </select>
+            <button type="button" onclick="addAccount()" class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-3 py-1.5 text-sm font-semibold cursor-pointer">+ Buat Akun</button>
+          </div>
+          <div id="accounts-list" class="space-y-2"></div>
+        </div>
+      </div>
+
+      <div class="p-3 border-t bg-gray-50 flex justify-between items-center rounded-b-2xl">
+        <button type="button" onclick="resetDefaultData()" class="text-xs text-red-600 hover:underline cursor-pointer">Reset Data Bawaan</button>
+        <button type="button" onclick="toggleAdminModal(false)" class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold cursor-pointer">Selesai</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function setupPWA() {
+      const manifest = {
+        name: "OutletReport Pro",
+        short_name: "OutletReport",
+        start_url: ".",
+        display: "standalone",
+        background_color: "#f3f4f6",
+        theme_color: "#1d4ed8"
+      };
+      const blob = new Blob([JSON.stringify(manifest)], { type: "application/json" });
+      const link = document.createElement("link");
+      link.rel = "manifest";
+      link.href = URL.createObjectURL(blob);
+      document.head.appendChild(link);
+    })();
+
+    // ================= HELPER FORMAT ANGKA & PECAHAN =================
+    function parseAngka(val) {
+      if (val === null || val === undefined) return 0;
+      const cleaned = String(val).replace(/\./g, '').replace(',', '.').replace(/[^0-9.-]/g, '');
+      const num = parseFloat(cleaned);
+      return isNaN(num) ? 0 : num;
+    }
+
+    function formatRibuanStr(rawVal) {
+      if (!rawVal) return '';
+      const rawStr = String(rawVal);
+
+      // Jika berisi tanda pecahan (/) seperti 1/4, 1/2, 3/4, 1 1/2 -> biarkan utuh
+      if (rawStr.includes('/')) {
+        return rawStr.replace(/[^0-9/\s.,]/g, '');
+      }
+
+      let str = rawStr.replace(/[^0-9.,]/g, '');
+      if (!str) return '';
+
+      let intPart = str;
+      let decPart = '';
+      let decSep = '';
+
+      const commaIdx = str.lastIndexOf(',');
+      const dotIdx = str.lastIndexOf('.');
+      if (commaIdx > -1) {
+        intPart = str.slice(0, commaIdx);
+        decPart = str.slice(commaIdx + 1).replace(/[^0-9]/g, '');
+        decSep = ',';
+      } else if (dotIdx > -1 && (str.length - dotIdx - 1) <= 2 && !/^\d{1,3}(\.\d{3})+$/.test(str)) {
+        intPart = str.slice(0, dotIdx);
+        decPart = str.slice(dotIdx + 1).replace(/[^0-9]/g, '');
+        decSep = ',';
+      }
+
+      const digitsOnly = intPart.replace(/[^0-9]/g, '');
+      if (!digitsOnly) return decSep ? '0' + decSep + decPart : '';
+
+      const formattedInt = digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      return decSep ? `${formattedInt}${decSep}${decPart}` : formattedInt;
+    }
+
+    function handleRibuanInput(el, callback) {
+      const formatted = formatRibuanStr(el.value);
+      if (el.value !== formatted) {
+        el.value = formatted;
+      }
+      if (typeof callback === 'function') callback();
+    }
+
+    function buildUnitSelectHTML() {
+      return `
+        <select class="unit-select" title="Pilih Satuan">
+          <option value="">-</option>
+          <option value="gram">gram</option>
+          <option value="liter">liter</option>
+          <option value="mililiter">mililiter</option>
+          <option value="batch">batch</option>
+        </select>
+      `;
+    }
+
+    const defaultData = {
+      bahan: [
+        "Peach Oolong Tea", "Jasmine Green Tea", "Black Tea", "Milk Tea Powder",
+        "new milk tea powder", "Vanilla Sundae Powder", "Matcha Ice Cream", "Coffee Ice Cream",
+        "Chocolate Ice Cream", "Strawberry Ice Cream", "Ice cream cone", "Original Coffee Powder",
+        "Pudding powder", "Aiyu Powder", "Pineapple Jam", "Cocoa Powder", "taro powder",
+        "matcha powder", "Yogurt Beverage syrup", "Fructose Syrup", "Caramel Syrup",
+        "Lemon Fructose Syrup", "Osmanthus Jam", "Paper waffle", "Peach Juice",
+        "brown sugar syrup", "Strawberry Jam 2.1L", "Mango Jam", "Canned Red Bean jam",
+        "Mung bean Jam", "Mango Popping Boba", "Strawberry Popping Boba jam", "Tapioka Boba",
+        "LEMON(ditulis berapa buah dan sisa berapa slices)", "Coconut Jelly", "OREO CRUMB",
+        "egg waffle", "strawberry flavored powder", "chocolate coating"
+      ],
+      plastik: [
+        "400ML U cup", "500ML M CUP", "700ML L CUP", "Single cup bag wrapping",
+        "Double cup bag wrapping", "PE four cup packing bag wrapping", "STRUK",
+        "Ice-cream cone paper wrapping", "22CM thin PP straw", "22CM thick PP straw",
+        "Telur waffle", "SENDOK KECIL", "90 Caliber PET Cross Hole Arch Cover wrapping",
+        "Label Paper 40mmx30mm", "CUP KOSONG", "Tissue", "Cone Pecah (BERAPA BAG & MASUK)",
+        "Pelembab Mesin es krim", "PLASTIK GULA", "Sealing", "Passion Jam",
+        "Corn Ice cream powder", "Tumbler penguin"
+      ],
+      produksi: [
+        "PEACH OOLONG TEA", "JASMINE GREEN TEA", "MILK TEA", "PUDDING",
+        "PEACH PUDDING", "COFFEE PUDDING", "ORIGINAL BOBA", "CARAMEL BOBA",
+        "VANILLA ICE CREAM", "STRAWBERRY ICE CREAM", "CHOCOLATE ICE CREAM",
+        "MATCHA ICE CREAM", "COFFEE ICE CREAM", "TARO ICE CREAM", "CREAMER",
+        "NON DAIRY CREAMER", "SILKY PUDDING", "WAFFLE"
+      ],
+      penjualan: {
+        rincian: [
+          { label: "SALDO AWAL CASH", bold: true, isSaldoAwal: true },
+          { label: "TOTAL PENJUALAN", bold: true, highlight: true },
+          { label: "GRAB FOOD", bold: false },
+          { label: "GOPAY", bold: false },
+          { label: "EDC BCA", bold: false },
+          { label: "QRIS", bold: false },
+          { label: "OVO", bold: false },
+          { label: "OMSET CASH", bold: true }
+        ],
+        promo: [
+          "VOUCHER",
+          "KARTU STEMPEL",
+          "GRABFOOD/GOFOOD"
+        ],
+        pengeluaranCount: 8,
+        ttd: ["DI SETOR", "DI AMBIL", "TTD KASIR"]
+      },
+      accounts: [
+        { username: "admin", password: "123456", role: "admin" },
+        { username: "kasir1", password: "123", role: "kasir" }
+      ]
+    };
+
+    let appData;
+    try {
+      const saved = JSON.parse(localStorage.getItem('outlet_pro_v6'));
+      appData = saved || JSON.parse(JSON.stringify(defaultData));
+      if (!appData.penjualan) appData.penjualan = JSON.parse(JSON.stringify(defaultData.penjualan));
+    } catch (e) {
+      appData = JSON.parse(JSON.stringify(defaultData));
+    }
+
+    let currentUser = null;
+    let currentAdminCategory = 'bahan';
+    let activeTabId = 'tab-stok';
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.innerText = msg;
+      t.classList.remove('hidden');
+      clearTimeout(window.toastTimer);
+      window.toastTimer = setTimeout(() => t.classList.add('hidden'), 2600);
+    }
+
+    function saveMasterData() {
+      try { localStorage.setItem('outlet_pro_v6', JSON.stringify(appData)); } catch (e) {}
+      renderTables();
+      hitungSisaCash();
+    }
+
+    function isiCepatAdmin() {
+      document.getElementById('username').value = 'admin';
+      document.getElementById('password').value = '123456';
+      document.getElementById('login-error').classList.add('hidden');
+    }
+
+    function prosesMasuk() {
+      const u = document.getElementById('username').value.trim();
+      const p = document.getElementById('password').value.trim();
+      const err = document.getElementById('login-error');
+
+      const found = appData.accounts.find(
+        acc => acc.username.toLowerCase() === u.toLowerCase() && String(acc.password) === p
+      );
+
+      if (!found) {
+        err.classList.remove('hidden');
+        return;
+      }
+
+      err.classList.add('hidden');
+      currentUser = found;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app-screen').classList.remove('hidden');
+      document.getElementById('user-badge').innerText = `${found.username} • ${found.role.toUpperCase()}`;
+      document.getElementById('kasir-name-field').value = found.username;
+
+      const btnAdmin = document.getElementById('btn-admin-panel');
+      if (found.role === 'admin') {
+        btnAdmin.classList.remove('hidden');
+      } else {
+        btnAdmin.classList.add('hidden');
+      }
+      showToast(`Selamat datang, ${found.username}!`);
+    }
+
+    function logout() {
+      currentUser = null;
+      document.getElementById('app-screen').classList.add('hidden');
+      document.getElementById('login-screen').style.display = 'flex';
+    }
+
+    function renderTables() {
+      const today = new Date().toISOString().slice(0, 10);
+      const unitSelect = buildUnitSelectHTML();
+
+      const buildQtyWithUnitCell = (bgClass = '') => `
+        <td class="${bgClass}">
+          <div class="flex items-center justify-center gap-0.5">
+            <input type="text" autocomplete="off" oninput="handleRibuanInput(this)" placeholder="0" class="num-ribuan w-12 text-center outline-none bg-transparent">
+            ${unitSelect}
+          </div>
+        </td>
+      `;
+
+      // 1. STOK BAHAN & PLASTIK (Angka + pilihan gram/liter/mililiter/batch)
+      const renderStokRows = (items, targetId) => {
+        document.getElementById(targetId).innerHTML = items.map((item, idx) => `
+          <tr>
+            <td class="text-center font-semibold">${idx + 1}</td>
+            <td class="font-medium">${item}</td>
+            ${buildQtyWithUnitCell('bg-blue-50/40')}
+            ${buildQtyWithUnitCell('bg-blue-50/40')}
+            ${buildQtyWithUnitCell('')}
+            ${buildQtyWithUnitCell('')}
+            ${buildQtyWithUnitCell('bg-green-50/40')}
+            ${buildQtyWithUnitCell('bg-green-50/40')}
+            <td><input type="text" autocomplete="off" class="w-full outline-none"></td>
+          </tr>
+        `).join('');
+      };
+
+      renderStokRows(appData.bahan, 'tbody-bahan');
+      renderStokRows(appData.plastik, 'tbody-plastik');
+
+      // 2. PRODUKSI & SISA BAHAN (Mendukung 1/4, 1/2, dll + pilihan gram/liter/mililiter/batch)
+      const buildProdQtyCell = (extraTextClass = '') => `
+        <td>
+          <div class="flex items-center justify-center gap-1">
+            <input type="text" autocomplete="off" oninput="handleRibuanInput(this)" placeholder="0 / 1/2" class="num-ribuan w-14 text-center outline-none bg-transparent ${extraTextClass}">
+            ${unitSelect}
+          </div>
+        </td>
+      `;
+
+      document.getElementById('tbody-produksi').innerHTML = appData.produksi.map((item, idx) => `
+        <tr>
+          <td class="text-center font-semibold">${idx + 1}</td>
+          <td class="font-medium">${item}</td>
+          ${buildProdQtyCell('')}
+          <td><input type="text" autocomplete="off" class="w-24 outline-none"></td>
+          <td><input type="date" autocomplete="off" class="text-xs outline-none"></td>
+          ${buildProdQtyCell('')}
+          ${buildProdQtyCell('')}
+          ${buildProdQtyCell('text-red-600')}
+          <td><input type="text" autocomplete="off" class="w-full outline-none"></td>
+        </tr>
+      `).join('');
+
+      // 3. PENJUALAN HARIAN (format titik otomatis pada semua nominal Rp.)
+      document.getElementById('tbody-penjualan-items').innerHTML = appData.penjualan.rincian.map((row, idx) => {
+        const isSaldo = row.isSaldoAwal || idx === 0 || row.label.toUpperCase().includes('SALDO AWAL CASH');
+        const onInp = isSaldo ? 'handleRibuanInput(this, hitungSisaCash)' : 'handleRibuanInput(this)';
+        return `
+          <tr>
+            <td class="${row.bold ? 'font-bold' : ''}">${row.label}</td>
+            <td>Rp. <input type="text" inputmode="numeric" autocomplete="off" ${isSaldo ? 'id="saldo-awal-cash"' : ''} oninput="${onInp}" class="num-ribuan w-36 border-b outline-none text-right ${row.bold ? 'font-semibold' : ''} ${row.highlight ? 'font-bold text-blue-700' : ''}" placeholder="0"></td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('tbody-promo-items').innerHTML = appData.penjualan.promo.map(promoName => `
+        <tr>
+          <td>${promoName}</td>
+          <td>Rp. <input type="text" inputmode="numeric" autocomplete="off" oninput="handleRibuanInput(this)" class="num-ribuan w-36 border-b outline-none text-right" placeholder="0"></td>
+        </tr>
+      `).join('');
+
+      let pengeluaranHTML = '';
+      const count = Math.max(1, parseInt(appData.penjualan.pengeluaranCount, 10) || 8);
+      for (let i = 1; i <= count; i++) {
+        pengeluaranHTML += `
+          <tr>
+            <td>${i}. <input type="text" autocomplete="off" placeholder="Keterangan pengeluaran..." class="w-4/5 outline-none"></td>
+            <td>Rp. <input type="text" inputmode="numeric" autocomplete="off" oninput="handleRibuanInput(this, hitungSisaCash)" class="num-ribuan pengeluaran-item w-36 border-b outline-none text-right" placeholder="0"></td>
+          </tr>
+        `;
+      }
+      document.getElementById('tbody-pengeluaran').innerHTML = pengeluaranHTML;
+
+      const ttd = appData.penjualan.ttd || ["DI SETOR", "DI AMBIL", "TTD KASIR"];
+      document.getElementById('thead-ttd-penjualan').innerHTML = `
+        <tr>
+          <th class="w-1/3">${ttd[0] || 'DI SETOR'}</th>
+          <th class="w-1/3">${ttd[1] || 'DI AMBIL'}</th>
+          <th class="w-1/3">${ttd[2] || 'TTD KASIR'}</th>
+        </tr>
+      `;
+
+      ['stok-tanggal', 'prod-tanggal', 'jual-tanggal'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && !el.value) el.value = today;
+      });
+    }
+
+    function hitungTotalPengeluaran() {
+      let totalPengeluaran = 0;
+      document.querySelectorAll('.pengeluaran-item').forEach(el => {
+        totalPengeluaran += parseAngka(el.value);
+      });
+      document.getElementById('total-pengeluaran').innerText = totalPengeluaran.toLocaleString('id-ID');
+    }
+
+    function hitungSisaCash() {
+      hitungTotalPengeluaran();
+      const totalPenerimaanManual = parseAngka(document.getElementById('total-penerimaan-cash').value);
+      const saldoAwalEl = document.getElementById('saldo-awal-cash');
+      const saldoAwalCash = saldoAwalEl ? parseAngka(saldoAwalEl.value) : 0;
+
+      const sisaCash = totalPenerimaanManual + saldoAwalCash;
+      document.getElementById('sisa-penerimaan-cash').innerText = sisaCash.toLocaleString('id-ID');
+    }
+
+    function toggleAdminModal(show) {
+      if (!currentUser || currentUser.role !== 'admin') return;
+      const modal = document.getElementById('admin-modal');
+      if (show) {
+        modal.classList.remove('hidden');
+        switchAdminSubTab(currentAdminCategory);
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function switchAdminSubTab(cat) {
+      currentAdminCategory = cat;
+      document.querySelectorAll('.admin-subtab').forEach(el => {
+        el.classList.remove('bg-white', 'border-t', 'border-x', 'text-blue-600');
+        el.classList.add('text-gray-600');
+      });
+      const activeBtn = document.getElementById('subtab-' + cat);
+      activeBtn.classList.add('bg-white', 'border-t', 'border-x', 'text-blue-600');
+      activeBtn.classList.remove('text-gray-600');
+
+      document.getElementById('editor-items-section').classList.add('hidden');
+      document.getElementById('editor-penjualan-section').classList.add('hidden');
+      document.getElementById('editor-akun-section').classList.add('hidden');
+
+      if (cat === 'akun') {
+        document.getElementById('editor-akun-section').classList.remove('hidden');
+        renderAccountsList();
+      } else if (cat === 'penjualan') {
+        document.getElementById('editor-penjualan-section').classList.remove('hidden');
+        renderPenjualanEditor();
+      } else {
+        document.getElementById('editor-items-section').classList.remove('hidden');
+        renderMasterItemsList();
+      }
+    }
+
+    function renderPenjualanEditor() {
+      document.getElementById('edit-penjualan-rincian').innerHTML = appData.penjualan.rincian.map((row, idx) => `
+        <div class="flex items-center gap-2 bg-white p-1.5 rounded border">
+          <span class="text-xs font-bold text-gray-500 w-5">${idx + 1}.</span>
+          <input type="text" value="${row.label.replace(/"/g, '&quot;')}" onchange="editPenjualanLabel('rincian', ${idx}, this.value)" class="flex-1 border px-2 py-1 rounded text-xs font-medium">
+          <button type="button" onclick="deletePenjualanRow('rincian', ${idx})" class="bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded text-xs font-semibold cursor-pointer">Hapus</button>
+        </div>
+      `).join('');
+
+      document.getElementById('edit-penjualan-promo').innerHTML = appData.penjualan.promo.map((pName, idx) => `
+        <div class="flex items-center gap-2 bg-white p-1.5 rounded border">
+          <span class="text-xs font-bold text-gray-500 w-5">${idx + 1}.</span>
+          <input type="text" value="${pName.replace(/"/g, '&quot;')}" onchange="editPenjualanLabel('promo', ${idx}, this.value)" class="flex-1 border px-2 py-1 rounded text-xs font-medium">
+          <button type="button" onclick="deletePenjualanRow('promo', ${idx})" class="bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded text-xs font-semibold cursor-pointer">Hapus</button>
+        </div>
+      `).join('');
+
+      document.getElementById('edit-pengeluaran-count').innerText = appData.penjualan.pengeluaranCount || 8;
+      const ttd = appData.penjualan.ttd || ["DI SETOR", "DI AMBIL", "TTD KASIR"];
+      document.getElementById('edit-ttd-1').value = ttd[0] || '';
+      document.getElementById('edit-ttd-2').value = ttd[1] || '';
+      document.getElementById('edit-ttd-3').value = ttd[2] || '';
+    }
+
+    function addPenjualanRow(type) {
+      if (type === 'rincian') {
+        const input = document.getElementById('new-jual-label');
+        const val = input.value.trim();
+        if (!val) return;
+        appData.penjualan.rincian.push({ label: val, bold: false });
+        input.value = '';
+      } else {
+        const input = document.getElementById('new-promo-label');
+        const val = input.value.trim();
+        if (!val) return;
+        appData.penjualan.promo.push(val);
+        input.value = '';
+      }
+      saveMasterData();
+      renderPenjualanEditor();
+      showToast('Baris penjualan ditambahkan');
+    }
+
+    function editPenjualanLabel(type, idx, val) {
+      if (!val.trim()) return;
+      if (type === 'rincian') {
+        appData.penjualan.rincian[idx].label = val.trim();
+      } else {
+        appData.penjualan.promo[idx] = val.trim();
+      }
+      saveMasterData();
+      showToast('Label diperbarui');
+    }
+
+    function deletePenjualanRow(type, idx) {
+      if (!confirm('Hapus baris ini?')) return;
+      if (type === 'rincian') {
+        appData.penjualan.rincian.splice(idx, 1);
+      } else {
+        appData.penjualan.promo.splice(idx, 1);
+      }
+      saveMasterData();
+      renderPenjualanEditor();
+      showToast('Baris dihapus');
+    }
+
+    function changePengeluaranCount(delta) {
+      const curr = parseInt(appData.penjualan.pengeluaranCount, 10) || 8;
+      const next = Math.max(1, Math.min(30, curr + delta));
+      appData.penjualan.pengeluaranCount = next;
+      saveMasterData();
+      renderPenjualanEditor();
+      showToast(`Jumlah baris pengeluaran: ${next}`);
+    }
+
+    function updateTtdLabels() {
+      appData.penjualan.ttd = [
+        document.getElementById('edit-ttd-1').value.trim() || 'DI SETOR',
+        document.getElementById('edit-ttd-2').value.trim() || 'DI AMBIL',
+        document.getElementById('edit-ttd-3').value.trim() || 'TTD KASIR'
+      ];
+      saveMasterData();
+      showToast('Label kolom bawah disimpan');
+    }
+
+    function renderMasterItemsList() {
+      const list = appData[currentAdminCategory];
+      document.getElementById('master-items-list').innerHTML = list.map((item, idx) => `
+        <div class="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border">
+          <span class="text-xs font-bold text-gray-500 w-6">${idx + 1}.</span>
+          <input type="text" value="${item.replace(/"/g, '&quot;')}" onchange="editMasterItem(${idx}, this.value)" class="flex-1 bg-white border px-2.5 py-1 rounded text-sm">
+          <button type="button" onclick="deleteMasterItem(${idx})" class="bg-red-100 hover:bg-red-200 text-red-700 px-2.5 py-1 rounded text-xs font-semibold cursor-pointer">Hapus</button>
+        </div>
+      `).join('');
+    }
+
+    function addMasterItem() {
+      const input = document.getElementById('new-item-name');
+      const val = input.value.trim();
+      if (!val) return;
+      appData[currentAdminCategory].push(val);
+      input.value = '';
+      saveMasterData();
+      renderMasterItemsList();
+      showToast('Item berhasil ditambahkan');
+    }
+
+    function editMasterItem(idx, newVal) {
+      if (!newVal.trim()) return;
+      appData[currentAdminCategory][idx] = newVal.trim();
+      saveMasterData();
+      showToast('Perubahan item tersimpan');
+    }
+
+    function deleteMasterItem(idx) {
+      if (!confirm('Hapus item ini?')) return;
+      appData[currentAdminCategory].splice(idx, 1);
+      saveMasterData();
+      renderMasterItemsList();
+      showToast('Item dihapus');
+    }
+
+    function renderAccountsList() {
+      document.getElementById('accounts-list').innerHTML = appData.accounts.map((acc, idx) => `
+        <div class="flex flex-wrap items-center justify-between gap-2 bg-gray-50 p-2.5 rounded-lg border text-sm">
+          <div>
+            <span class="font-bold">${acc.username}</span>
+            <span class="text-xs text-gray-500 ml-2">Pass: <code class="bg-gray-200 px-1.5 py-0.5 rounded">${acc.password}</code></span>
+            <span class="ml-2 text-xs px-2 py-0.5 rounded font-semibold ${acc.role === 'admin' ? 'bg-amber-200 text-amber-900' : 'bg-blue-100 text-blue-800'}">${acc.role.toUpperCase()}</span>
+          </div>
+          ${acc.username !== 'admin' ? `<button type="button" onclick="deleteAccount(${idx})" class="bg-red-500 text-white px-2.5 py-1 rounded text-xs cursor-pointer">Hapus</button>` : '<span class="text-xs text-gray-400">Akun Utama</span>'}
+        </div>
+      `).join('');
+    }
+
+    function addAccount() {
+      const u = document.getElementById('new-acc-user').value.trim();
+      const p = document.getElementById('new-acc-pass').value.trim();
+      const r = document.getElementById('new-acc-role').value;
+      if (!u || !p) return alert('Isi username dan password!');
+      if (appData.accounts.some(a => a.username.toLowerCase() === u.toLowerCase())) return alert('Username sudah terdaftar!');
+      appData.accounts.push({ username: u, password: p, role: r });
+      document.getElementById('new-acc-user').value = '';
+      document.getElementById('new-acc-pass').value = '';
+      saveMasterData();
+      renderAccountsList();
+      showToast('Akun baru dibuat');
+    }
+
+    function deleteAccount(idx) {
+      appData.accounts.splice(idx, 1);
+      saveMasterData();
+      renderAccountsList();
+      showToast('Akun dihapus');
+    }
+
+    function resetDefaultData() {
+      if (!confirm('Kembalikan semua item, form penjualan, dan akun ke bawaan awal?')) return;
+      appData = JSON.parse(JSON.stringify(defaultData));
+      saveMasterData();
+      switchAdminSubTab(currentAdminCategory);
+      showToast('Data dikembalikan ke awal');
+    }
+
+    function switchTab(tabId) {
+      activeTabId = tabId;
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.getElementById(tabId).classList.remove('hidden');
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-blue-600', 'text-white');
+        btn.classList.add('bg-white', 'text-gray-700');
+      });
+      document.getElementById('btn-' + tabId).classList.remove('bg-white', 'text-gray-700');
+      document.getElementById('btn-' + tabId).classList.add('bg-blue-600', 'text-white');
+    }
+
+    function formatTanggalIndo(isoDate) {
+      if (!isoDate) return '-';
+      const parts = isoDate.split('-');
+      if (parts.length !== 3) return isoDate;
+      const bulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+      const mIdx = parseInt(parts[1], 10) - 1;
+      return `${parseInt(parts[2], 10)} ${bulan[mIdx] || parts[1]} ${parts[0]}`;
+    }
+
+    async function captureFullReportCanvas() {
+      const sourceTab = document.getElementById(activeTabId);
+      if (!sourceTab) return null;
+
+      const wrapper = document.createElement('div');
+      wrapper.style.position = 'fixed';
+      wrapper.style.left = '-99999px';
+      wrapper.style.top = '0';
+      wrapper.style.width = '1120px';
+      wrapper.style.background = '#ffffff';
+      wrapper.style.padding = '24px';
+      wrapper.style.zIndex = '-1';
+
+      const clone = sourceTab.cloneNode(true);
+      clone.classList.remove('hidden');
+
+      const origInputs = sourceTab.querySelectorAll('input, select, textarea');
+      const clonedInputs = clone.querySelectorAll('input, select, textarea');
+
+      origInputs.forEach((orig, i) => {
+        const target = clonedInputs[i];
+        if (!target) return;
+
+        const isHeader = orig.classList.contains('header-input');
+        const isUnitSelect = orig.classList.contains('unit-select');
+        let textVal = '';
+
+        if (isUnitSelect) {
+          // Hanya tampilkan satuan jika dipilih dan input angka di sebelahnya tidak kosong
+          const prevInput = orig.previousElementSibling;
+          const hasNum = prevInput && prevInput.value.trim() !== '';
+          textVal = (hasNum && orig.value) ? ` ${orig.value}` : '';
+        } else if (orig.type === 'date') {
+          textVal = orig.value ? `${formatTanggalIndo(orig.value)} (${orig.value})` : '-';
+        } else if (orig.classList.contains('num-ribuan')) {
+          textVal = orig.value.trim() ? formatRibuanStr(orig.value) : '';
+        } else {
+          textVal = orig.value.trim();
+        }
+
+        const span = document.createElement('span');
+        if (isHeader) {
+          span.innerText = textVal || '-';
+          span.style.display = 'inline-block';
+          span.style.fontSize = '15px';
+          span.style.fontWeight = '800';
+          span.style.color = '#111827';
+          span.style.padding = '2px 8px';
+          span.style.background = '#fef3c7';
+          span.style.borderRadius = '4px';
+        } else if (isUnitSelect) {
+          span.innerText = textVal;
+          span.style.display = 'inline-block';
+          span.style.fontSize = '11px';
+          span.style.fontWeight = '600';
+          span.style.color = '#374151';
+          span.style.marginLeft = textVal ? '3px' : '0';
+        } else {
+          span.innerText = textVal;
+          span.style.display = 'inline-block';
+          span.style.minHeight = '14px';
+          span.style.fontSize = '12px';
+          span.style.fontWeight = orig.classList.contains('font-semibold') || orig.classList.contains('font-bold') ? '700' : '400';
+          span.style.color = orig.classList.contains('text-red-600') ? '#dc2626' : '#111827';
+        }
+
+        target.replaceWith(span);
+      });
+
+      clone.querySelectorAll('.export-scroll').forEach(box => {
+        box.style.overflow = 'visible';
+        box.style.maxWidth = 'none';
+      });
+
+      wrapper.appendChild(clone);
+      document.body.appendChild(wrapper);
+
+      await new Promise(r => setTimeout(r, 80));
+
+      const canvas = await html2canvas(wrapper, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        width: wrapper.scrollWidth,
+        height: wrapper.scrollHeight,
+        windowWidth: wrapper.scrollWidth,
+        windowHeight: wrapper.scrollHeight
+      });
+
+      document.body.removeChild(wrapper);
+      return canvas;
+    }
+
+    async function exportToImage() {
+      try {
+        showToast('Memproses gambar PNG utuh...');
+        const canvas = await captureFullReportCanvas();
+        if (!canvas) return;
+        const link = document.createElement('a');
+        link.download = `${activeTabId}-${new Date().toISOString().slice(0,10)}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        showToast('Gambar PNG utuh berhasil diunduh!');
+      } catch (err) {
+        showToast('Gagal menyimpan gambar. Coba lagi.');
+      }
+    }
+
+    async function exportToPDF() {
+      try {
+        showToast('Memproses file PDF multi-halaman...');
+        const canvas = await captureFullReportCanvas();
+        if (!canvas) return;
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const margin = 8;
+        const pdfWidth = pdf.internal.pageSize.getWidth() - (margin * 2);
+        const pdfPageHeight = pdf.internal.pageSize.getHeight() - (margin * 2);
+
+        const pxPerMm = canvas.width / pdfWidth;
+        const pageHeightPx = Math.floor(pdfPageHeight * pxPerMm);
+
+        let offsetY = 0;
+        let pageIndex = 0;
+
+        while (offsetY < canvas.height) {
+          const currentSliceHeight = Math.min(pageHeightPx, canvas.height - offsetY);
+
+          const pageCanvas = document.createElement('canvas');
+          pageCanvas.width = canvas.width;
+          pageCanvas.height = currentSliceHeight;
+
+          const ctx = pageCanvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+          ctx.drawImage(
+            canvas,
+            0, offsetY, canvas.width, currentSliceHeight,
+            0, 0, canvas.width, currentSliceHeight
+          );
+
+          const sliceImgData = pageCanvas.toDataURL('image/png');
+          const sliceHeightMm = currentSliceHeight / pxPerMm;
+
+          if (pageIndex > 0) pdf.addPage();
+          pdf.addImage(sliceImgData, 'PNG', margin, margin, pdfWidth, sliceHeightMm);
+
+          offsetY += currentSliceHeight;
+          pageIndex++;
+        }
+
+        pdf.save(`${activeTabId}-${new Date().toISOString().slice(0,10)}.pdf`);
+        showToast('File PDF berhasil diunduh tanpa terpotong!');
+      } catch (err) {
+        showToast('Gagal membuat PDF. Coba lagi.');
+      }
+    }
+
+    renderTables();
+  </script>
+</body>
+</html>
